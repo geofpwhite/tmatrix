@@ -1,11 +1,11 @@
-module fortio.org/tmatrix
+module github.com/geofpwhite/tmatrix
 
 go 1.25.3
 
-require fortio.org/terminal v0.60.2
+require fortio.org/terminal v0.61.0
 
 require (
-	fortio.org/log v1.18.1 // indirect
+	fortio.org/log v1.18.3 // indirect
 	fortio.org/safecast v1.2.0 // indirect
 	fortio.org/struct2env v0.4.2 // indirect
 	github.com/jbuchbinder/gopnm v0.0.0-20220507095634-e31f54490ce0 // indirect

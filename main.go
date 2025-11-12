@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"math/rand"
+	"runtime"
 	"sync"
 
 	"fortio.org/terminal/ansipixels"
@@ -42,6 +43,7 @@ func configure(fps float64, freq, speed int) *config {
 }
 
 func main() {
+	maxProcs := int32(runtime.GOMAXPROCS(-1))
 	fpsFlag := flag.Float64("fps", 60., "adjust the frames per second")
 	freqFlag := flag.Int("freq", 2, "adjust the percent chance each frame that a new column is spawned in")
 	speedFlag := flag.Int("speed", 1, "adjust the speed of the green streaks")
@@ -79,11 +81,10 @@ func main() {
 				c.cells[i][j].shade.G--
 				c.ap.WriteFg(c.cells[i][j].shade.Color())
 				c.ap.WriteAt(j, i, "%s", string(cell.char))
-
 			}
 		}
 		num := rand.Intn(100)
-		if num <= c.freq {
+		if num <= c.freq && c.matrix.streaksActive.Load() < maxProcs {
 			c.matrix.newStreak(ctx, c.speed)
 			newStreaks++
 		}
