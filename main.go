@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/rand"
 	"runtime"
-	"sync"
 
 	"fortio.org/terminal/ansipixels"
 	"fortio.org/terminal/ansipixels/tcolor"
@@ -15,7 +14,6 @@ import (
 type config struct {
 	ap     *ansipixels.AnsiPixels
 	matrix matrix
-	mut    sync.Mutex
 	cells  [][]cell
 	freq   int
 	speed  int
@@ -29,7 +27,7 @@ type cell struct {
 var BrightGreen = tcolor.RGBColor{R: 0, G: 255, B: 0}
 
 func configure(fps float64, freq, speed int) *config {
-	c := config{ansipixels.NewAnsiPixels(fps), matrix{streaks: make(chan streak)}, sync.Mutex{}, nil, freq, speed}
+	c := config{ansipixels.NewAnsiPixels(fps), matrix{streaks: make(chan streak)}, nil, freq, speed}
 	c.ap.Open()
 	c.ap.GetSize()
 	c.ap.ClearScreen()
@@ -40,6 +38,19 @@ func configure(fps float64, freq, speed int) *config {
 		c.cells[i] = make([]cell, c.matrix.maxY+1)
 	}
 	return &c
+}
+
+func (c *config) resizeConfigure() {
+	*c = config{ap: c.ap, matrix: matrix{streaks: make(chan streak)}, cells: nil, freq: c.freq, speed: c.speed}
+	c.ap.Open()
+	c.ap.GetSize()
+	c.ap.ClearScreen()
+	c.matrix.maxX = c.ap.H
+	c.matrix.maxY = c.ap.W
+	c.cells = make([][]cell, c.matrix.maxX+1)
+	for i := range c.cells {
+		c.cells[i] = make([]cell, c.matrix.maxY+1)
+	}
 }
 
 func main() {
@@ -60,11 +71,15 @@ func main() {
 		cancel()
 	}()
 	c.ap.OnResize = func() error {
-		c = configure(*fpsFlag, c.freq, c.speed)
+		c.resizeConfigure()
 		return nil
 	}
 	c.ap.SyncBackgroundColor()
 	c.ap.FPSTicks(func() bool {
+		c.ap.GetSize()
+		if c.matrix.maxX != c.ap.H || c.matrix.maxY != c.ap.W {
+			c.ap.OnResize()
+		}
 		select {
 		case streak := <-c.matrix.streaks:
 			hits++
@@ -72,17 +87,7 @@ func main() {
 			c.cells[streak.x][streak.y].char = streak.char
 		default:
 		}
-		for i, row := range c.cells[:len(c.cells)-1] {
-			for j, cell := range row[:len(row)-1] {
-				if cell.shade.G <= 35 {
-					c.ap.WriteAt(j, i, " ")
-					continue
-				}
-				c.cells[i][j].shade.G--
-				c.ap.WriteFg(c.cells[i][j].shade.Color())
-				c.ap.WriteAt(j, i, "%s", string(cell.char))
-			}
-		}
+		c.shadeCells()
 		num := rand.Intn(100)
 		if num <= c.freq && c.matrix.streaksActive.Load() < maxProcs {
 			c.matrix.newStreak(ctx, c.speed)
@@ -94,4 +99,18 @@ func main() {
 		return true
 	})
 	fmt.Println(len(c.matrix.streaks))
+}
+
+func (c *config) shadeCells() {
+	for i, row := range c.cells[:len(c.cells)-1] {
+		for j, cell := range row[:len(row)-1] {
+			if cell.shade.G <= 35 {
+				c.ap.WriteAt(j, i, " ")
+				continue
+			}
+			c.cells[i][j].shade.G--
+			c.ap.WriteFg(c.cells[i][j].shade.Color())
+			c.ap.WriteAt(j, i, "%s", string(cell.char))
+		}
+	}
 }

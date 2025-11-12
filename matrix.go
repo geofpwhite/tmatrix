@@ -5,14 +5,11 @@ import (
 	"math/rand"
 	"sync/atomic"
 	"time"
-
-	"fortio.org/terminal/ansipixels/tcolor"
 )
 
 type streak struct {
-	x, y  int
-	char  rune
-	color tcolor.RGBColor
+	x, y int
+	char rune
 }
 
 type matrix struct {
@@ -22,7 +19,7 @@ type matrix struct {
 }
 
 func (m *matrix) newStreak(ctx context.Context, speedDividend int) {
-	s := streak{rand.Intn(m.maxX), rand.Intn(m.maxY), rune(rand.Intn(128) + 8), BrightGreen}
+	s := streak{rand.Intn(m.maxX), rand.Intn(m.maxY), rune(rand.Intn(128) + 8)}
 	speed := rand.Intn(100)
 	timeBetween := max(time.Duration(speed*int(time.Millisecond)/speedDividend), 10)
 	m.streaksActive.Add(1)
@@ -40,10 +37,7 @@ func (m *matrix) newStreak(ctx context.Context, speedDividend int) {
 				if s.x >= m.maxX {
 					return
 				}
-				s.char = rune(rand.Intn(128) + 8) // + 8 because we don't wanna hit the bell character
-				for s.char == '\n' || s.char == '\r' || s.char == ' ' {
-					s.char = rune(rand.Intn(128) + 8)
-				}
+				s.char = rune(rand.Intn(128) + 33) // + 33 because we don't wanna hit the bell character
 				m.streaks <- s
 			case <-ctx.Done():
 				return
