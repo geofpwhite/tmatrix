@@ -37,7 +37,7 @@ func (m *matrix) newStreak(ctx context.Context, speedDividend int) {
 				if s.x >= m.maxX {
 					return
 				}
-				s.char = rune(rand.Intn(128) + 33) // + 33 because we don't wanna hit the bell character
+				s.char = rune(rand.Intn(93) + 33) // number between 33 and 126 = nice ascii char
 				m.streaks <- s
 			case <-ctx.Done():
 				return
